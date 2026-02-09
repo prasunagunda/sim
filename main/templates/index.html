@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title> Speedtest</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <title>Speedtest</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
         body{font-family:Arial;background:#0b1220;color:white;text-align:center;padding:20px;}
         .card{max-width:420px;margin:auto;background:#111a2e;padding:20px;border-radius:16px;}
@@ -30,39 +31,60 @@
 <script>
 async function loadNetwork(){
     try{
-        let res = await fetch("/network/?t=" + new Date().getTime());
+        // call the network API
+        let res = await fetch("/network/?t=" + Date.now());
         let data = await res.json();
-        document.getElementById("net").innerText = data.network;
+
+        // choose display name: prefer ISP (Jio/ACT/etc) then server SSID then fallback
+        let networkName = "Unknown Network";
+        if (data.isp && data.isp !== "Private Network (LAN)" && data.isp !== "Unknown" && data.lookup_status === "success") {
+            networkName = data.isp;
+        } else if (data.server_ssid && data.server_ssid !== "Server-Network-Unknown") {
+            networkName = data.server_ssid;
+        } else if (data.isp) {
+            // show "Private Network (LAN)" for local connections
+            networkName = data.isp;
+        }
+
+        document.getElementById("net").innerText = networkName;
     }catch(e){
-        document.getElementById("net").innerText = "Unknown-Network";
+        document.getElementById("net").innerText = "Network Error";
+        console.error(e);
     }
 }
 
 async function runTest(){
     document.getElementById("btn").disabled = true;
-    document.getElementById("out").innerText = "⏱ Testing... wait 20-60 sec";
+    document.getElementById("out").innerText = "⏱ Testing... this can take 20–60s";
 
+    // refresh network name before running the test
     await loadNetwork();
 
-    let res = await fetch("/speedtest/");
-    let data = await res.json();
+    try {
+        let res = await fetch("/speedtest/");
+        let data = await res.json();
 
-    if(data.status === "success"){
-        document.getElementById("out").innerHTML =
-            "✅ Completed<br>" +
-            "⬇ Download: <b>" + data.download_mbps + " Mbps</b><br>" +
-            "⬆ Upload: <b>" + data.upload_mbps + " Mbps</b><br>" +
-            "📍 Ping: <b>" + data.ping_ms + " ms</b><br>" +
-            "🕒 Time: " + data.time;
-    }else{
-        document.getElementById("out").innerText = "❌ Failed: " + data.error;
+        if (data.status === "success") {
+            document.getElementById("out").innerHTML =
+                "✅ Completed<br>" +
+                "⬇ Download: <b>" + data.download_mbps + " Mbps</b><br>" +
+                "⬆ Upload: <b>" + data.upload_mbps + " Mbps</b><br>" +
+                "📍 Ping: <b>" + data.ping_ms + " ms</b><br>" +
+                "🕒 Time: " + data.time;
+        } else {
+            document.getElementById("out").innerText = "❌ Failed: " + (data.error || JSON.stringify(data));
+        }
+    } catch (err) {
+        document.getElementById("out").innerText = "❌ Request error";
+        console.error(err);
+    } finally {
+        document.getElementById("btn").disabled = false;
     }
-
-    document.getElementById("btn").disabled = false;
 }
 
+// initial load and periodic refresh of network name
 loadNetwork();
-setInterval(loadNetwork, 2000);
+setInterval(loadNetwork, 5000);
 </script>
 
 </body>
