@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> Speedtest</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body{font-family:Arial;background:#0b1220;color:white;text-align:center;padding:20px;}
+        .card{max-width:420px;margin:auto;background:#111a2e;padding:20px;border-radius:16px;}
+        .netbox{background:#eaffea;color:#0c4a0c;padding:12px;border-radius:12px;font-weight:bold;margin:15px 0;}
+        button{width:100%;padding:12px;font-size:18px;border:none;border-radius:12px;background:#00c2ff;font-weight:bold;}
+        button:disabled{background:gray;}
+        .box{margin-top:15px;font-size:18px;line-height:1.8;}
+        .small{color:#aaa;font-size:14px;}
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>📶 Speedtest</h2>
+    <p class="small">Click Run to test your current Internet speed.</p>
+
+    <div class="netbox">
+        📡 Current Connected Network: <span id="net">Loading...</span>
+    </div>
+
+    <button id="btn" onclick="runTest()">🚀 Run Speed Test</button>
+    <div class="box" id="out">Status: Ready ✅</div>
+</div>
+
+<script>
+async function loadNetwork(){
+    try{
+        let res = await fetch("/network/?t=" + new Date().getTime());
+        let data = await res.json();
+        document.getElementById("net").innerText = data.network;
+    }catch(e){
+        document.getElementById("net").innerText = "Unknown-Network";
+    }
+}
+
+async function runTest(){
+    document.getElementById("btn").disabled = true;
+    document.getElementById("out").innerText = "⏱ Testing... wait 20-60 sec";
+
+    await loadNetwork();
+
+    let res = await fetch("/speedtest/");
+    let data = await res.json();
+
+    if(data.status === "success"){
+        document.getElementById("out").innerHTML =
+            "✅ Completed<br>" +
+            "⬇ Download: <b>" + data.download_mbps + " Mbps</b><br>" +
+            "⬆ Upload: <b>" + data.upload_mbps + " Mbps</b><br>" +
+            "📍 Ping: <b>" + data.ping_ms + " ms</b><br>" +
+            "🕒 Time: " + data.time;
+    }else{
+        document.getElementById("out").innerText = "❌ Failed: " + data.error;
+    }
+
+    document.getElementById("btn").disabled = false;
+}
+
+loadNetwork();
+setInterval(loadNetwork, 2000);
+</script>
+
+</body>
+</html>
