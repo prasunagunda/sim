@@ -4,6 +4,10 @@ from datetime import datetime
 import subprocess
 import json
 
+from django.shortcuts import render
+
+def home(request):
+    return render(request, "index.html")  # Render the index.html template
 
 # ✅ Get Current WiFi SSID name from Windows
 def get_wifi_name_windows():
