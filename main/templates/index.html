@@ -1,91 +1,135 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <title>Speedtest</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-        body{font-family:Arial;background:#0b1220;color:white;text-align:center;padding:20px;}
-        .card{max-width:420px;margin:auto;background:#111a2e;padding:20px;border-radius:16px;}
-        .netbox{background:#eaffea;color:#0c4a0c;padding:12px;border-radius:12px;font-weight:bold;margin:15px 0;}
-        button{width:100%;padding:12px;font-size:18px;border:none;border-radius:12px;background:#00c2ff;font-weight:bold;}
-        button:disabled{background:gray;}
-        .box{margin-top:15px;font-size:18px;line-height:1.8;}
-        .small{color:#aaa;font-size:14px;}
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Speed Test</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#0b1220;color:#eaf3ff;text-align:center;padding:28px}
+    .card{max-width:860px;margin:0 auto;background:linear-gradient(180deg,#08142a,#071227);padding:28px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+    h1{margin:0 0 8px;font-size:28px}
+    .sub{color:#9fb0c6;margin-bottom:16px}
+    .netbox{background:#0f253c;padding:12px;border-radius:10px;margin:10px 0;font-weight:700}
+
+    /* SMALLER GAUGE */
+    .gauge{width:260px;height:260px;margin:18px auto;position:relative}
+    svg{transform:rotate(-90deg)}
+    circle{fill:none;stroke-width:16}
+    .bg{stroke:#122338}
+    .meter{stroke: url(#ggrad); stroke-linecap:round; transition:stroke-dashoffset 700ms ease}
+
+    .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .speed{font-size:36px;font-weight:800}
+    .unit{color:#9fb0c6}
+
+    .row{display:flex;justify-content:space-between;margin-top:20px}
+    .col{flex:1}
+    .stat{font-size:18px}
+    .stat small{display:block;color:#9fb0c6}
+
+    button{margin-top:22px;padding:14px 22px;border-radius:12px;border:none;background:linear-gradient(90deg,#00e0ff,#3ec4ff);font-size:18px;font-weight:800;cursor:pointer}
+    button:disabled{opacity:0.6}
+  </style>
 </head>
 <body>
+  <div class="card">
+    <h1>📶 Speed Test</h1>
+    <div class="sub">Click run to test your current internet connection</div>
 
-<div class="card">
-    <h2>📶 Speedtest</h2>
-    <p class="small">Click Run to test your current Internet speed.</p>
+    <div class="netbox">Network: <span id="net">Loading...</span></div>
 
-    <div class="netbox">
-        📡 Current Connected Network: <span id="net">Loading...</span>
+    <div class="gauge" aria-hidden>
+      <svg width="260" height="260">
+        <defs>
+          <linearGradient id="ggrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00f0ff"/>
+            <stop offset="100%" stop-color="#00ffa2"/>
+          </linearGradient>
+        </defs>
+        <circle class="bg" cx="130" cy="130" r="110" />
+        <circle id="meter" class="meter" cx="130" cy="130" r="110"
+          stroke-dasharray="691" stroke-dashoffset="691" />
+      </svg>
+
+      <div class="center">
+        <div id="speed" class="speed">0</div>
+        <div class="unit">Mbps Download</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col stat"><small>Download</small><span id="download">—</span></div>
+      <div class="col stat"><small>Upload</small><span id="upload">—</span></div>
+      <div class="col stat"><small>Ping</small><span id="ping">—</span></div>
     </div>
 
     <button id="btn" onclick="runTest()">🚀 Run Speed Test</button>
-    <div class="box" id="out">Status: Ready ✅</div>
-</div>
+    <div id="message" style="margin-top:12px;color:#9fb0c6"></div>
+  </div>
 
 <script>
-async function loadNetwork(){
+  const meter = document.getElementById('meter');
+  const speedEl = document.getElementById('speed');
+
+  function setGauge(mbps){
+    const max = 1000;
+    const circumference = 2 * Math.PI * 110; // updated smaller radius
+    const val = Math.min(mbps, max);
+    const offset = circumference - (val / max) * circumference;
+    meter.style.strokeDashoffset = offset;
+    speedEl.innerText = Math.round(mbps);
+  }
+
+  async function loadNetwork(){
     try{
-        // call the network API
-        let res = await fetch("/network/?t=" + Date.now());
-        let data = await res.json();
-
-        // choose display name: prefer ISP (Jio/ACT/etc) then server SSID then fallback
-        let networkName = "Unknown Network";
-        if (data.isp && data.isp !== "Private Network (LAN)" && data.isp !== "Unknown" && data.lookup_status === "success") {
-            networkName = data.isp;
-        } else if (data.server_ssid && data.server_ssid !== "Server-Network-Unknown") {
-            networkName = data.server_ssid;
-        } else if (data.isp) {
-            // show "Private Network (LAN)" for local connections
-            networkName = data.isp;
-        }
-
-        document.getElementById("net").innerText = networkName;
+      const r = await fetch('/network/?t=' + Date.now());
+      const d = await r.json();
+      let display = d.isp || 'Unknown';
+      if (d.city) display += ' • ' + d.city;
+      document.getElementById('net').innerText = display;
     }catch(e){
-        document.getElementById("net").innerText = "Network Error";
-        console.error(e);
+      document.getElementById('net').innerText = 'Network Error';
+      console.error(e);
     }
-}
+  }
 
-async function runTest(){
-    document.getElementById("btn").disabled = true;
-    document.getElementById("out").innerText = "⏱ Testing... this can take 20–60s";
+  async function runTest(){
+    const btn = document.getElementById('btn');
+    const msg = document.getElementById('message');
+    btn.disabled = true;
+    msg.innerText = 'Running speed test — this can take 20–60s...';
 
-    // refresh network name before running the test
-    await loadNetwork();
+    let anim = setInterval(() => {
+      const fake = Math.random() * 400;
+      setGauge(fake);
+    }, 150);
 
-    try {
-        let res = await fetch("/speedtest/");
-        let data = await res.json();
+    try{
+      await loadNetwork();
 
-        if (data.status === "success") {
-            document.getElementById("out").innerHTML =
-                "✅ Completed<br>" +
-                "⬇ Download: <b>" + data.download_mbps + " Mbps</b><br>" +
-                "⬆ Upload: <b>" + data.upload_mbps + " Mbps</b><br>" +
-                "📍 Ping: <b>" + data.ping_ms + " ms</b><br>" +
-                "🕒 Time: " + data.time;
-        } else {
-            document.getElementById("out").innerText = "❌ Failed: " + (data.error || JSON.stringify(data));
-        }
-    } catch (err) {
-        document.getElementById("out").innerText = "❌ Request error";
-        console.error(err);
-    } finally {
-        document.getElementById("btn").disabled = false;
+      const r = await fetch('/speedtest/');
+      const d = await r.json();
+
+      if (d.status === 'success'){
+        setGauge(d.download_mbps);
+        document.getElementById('download').innerText = d.download_mbps + ' Mbps';
+        document.getElementById('upload').innerText = d.upload_mbps + ' Mbps';
+        document.getElementById('ping').innerText = d.ping_ms + ' ms';
+        msg.innerText = 'Completed';
+      } else {
+        msg.innerText = 'Failed: ' + (d.error || JSON.stringify(d));
+      }
+    }catch(err){
+      console.error(err);
+      msg.innerText = 'Error running test';
+    }finally{
+      clearInterval(anim);
+      btn.disabled = false;
     }
-}
+  }
 
-// initial load and periodic refresh of network name
-loadNetwork();
-setInterval(loadNetwork, 5000);
+  loadNetwork();
+  setInterval(loadNetwork, 10000);
 </script>
-
 </body>
 </html>
